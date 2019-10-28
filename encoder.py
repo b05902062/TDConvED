@@ -1,17 +1,21 @@
 import torchvision.models as models
+import numpy as np
 import torch.nn as nn
 import torch
+import math
+
+
 
 g_encode_dim=512
 g_encode_kernel=3#odd
-g_video_sample=25
+g_video_sample=1
 
 class frame_feature_extraction(nn.Module):
 	def __init__(self,model,transfer_dim):
 		super(frame_feature_extraction, self).__init__()
 		
 		if model=='resnet18':
-			self.renet=models.resnet18(pretrained=True)
+			self.resnet=models.resnet18(pretrained=True)
 		self.fc=nn.Linear(1000,transfer_dim)
 
 	def forward(self,x):
@@ -36,11 +40,11 @@ class TDconv(nn.Module):
 	def __init__(self,encode_dim):
 		super(TDconv, self).__init__()
 
-		self.deform_conv=nn.conv1d(1,g_encode_kernel,kernel_size=g_encode_kernel*encode_dim,padding=math.floor(g_encode_kernel/2)*encode_dim,stride=encode_dim)
-		self.attention_conv=nn.conv1d(1,2*encode_dim,kernel_size=g_encode_kernel*encode_dim,stride=g_encode_kernel*encode_dim)
-
-
-	def forword(self,x):
+		self.deform_conv=nn.Conv1d(1,g_encode_kernel,kernel_size=g_encode_kernel*encode_dim,padding=math.floor(g_encode_kernel/2)*encode_dim,stride=encode_dim)
+		self.attention_conv=nn.Conv1d(1,2*encode_dim,kernel_size=g_encode_kernel*encode_dim,stride=g_encode_kernel*encode_dim)
+		self.relu=nn.ReLU()
+		self.sig=nn.Sigmoid()
+	def forward(self,x):
 		#input x is of size batch*g_video_sample*encode_dim
 		x_filter=x.clone()
 		x_temp=x.clone()
@@ -50,13 +54,21 @@ class TDconv(nn.Module):
 		x_filter=x_filter.transpose(1,2)
 		#x_filter is of size batch*g_video_sample*g_encode_kernel now
 		
-		x_filter=x_filter.reshape(x_filter.shape[0],g_encode_kernel*g_video_sample,1)).expand(-1,-1,g_video_sample)
-		a=torch.tensor([o for o in range(i-g_encode_kernel,i+g_encode_kernel+1 for i in range(0,g_video_sample)]).reshape(1,-1,1).expand(x_filter.shape).to_device()
-		b=torch.from_numpy(np.arange(g_video_sample)).reshape(1,1,-1).expand(x_filter.shape).to_device()
+		x_filter=x_filter.reshape(x_filter.shape[0],g_encode_kernel*g_video_sample,1).expand(-1,-1,g_video_sample)
+		a=torch.tensor([o  for i in range(0,g_video_sample) for o in range(i-math.floor(g_encode_kernel/2),i+math.floor(g_encode_kernel/2)+1)]).type(torch.cuda.FloatTensor).reshape(1,-1,1).expand(x_filter.shape).cuda()
+		b=torch.from_numpy(np.arange(g_video_sample)).type(torch.cuda.FloatTensor).reshape(1,1,-1).expand(x_filter.shape).cuda()
 		#x_filter, a, and b are now all of size batch*(g_encode_kernel*g_video_sample)*g_video_sample 3d tensor.
-		x_filter=x_filter+a-b
-		x_filter=1-torch.absolute(x_filter)
-		x_filter=nn.relu(x_filter)
+
+
+		x_filter=x_filter+a
+		x_filter=self.sig(x_filter)*(g_video_sample-1)##modification
+		print("x_filter_before",x_filter[0][0])#delete
+		x_filter=x_filter-b
+		x_filter=1-torch.abs(x_filter)
+		#print("x_filter_before",x_filter,"gradient",x_filter.grad)#delete
+		x_filter=self.relu(x_filter)
+		
+		print("x_filter",x_filter[0][0])#delete
 		
 		x=x.unsqueeze(dim=1)#return batch*1*g_video_sample*encode_dim
 		x_filter=x_filter.unsqueeze(dim=3)#return  batch*(g_encode_kernel*g_video_sample)*g_video_sample*1
@@ -75,8 +87,9 @@ class TDconv(nn.Module):
 
 
 def sig_gate(x):
-	out_dim=x.shape[2]/2
-	x=x[:,:,:out_dim]*nn.sigmoid(x[:,:,out_dim:])
+	sig=nn.Sigmoid()
+	out_dim=int(x.shape[2]/2)
+	x=x[:,:,:out_dim]*sig(x[:,:,out_dim:])
 	return x
 
 class TDconvE(nn.Module):
@@ -85,11 +98,19 @@ class TDconvE(nn.Module):
 		self.video_encoder=video_feature_extraction(encoder_dim)
 		self.TDenc1=TDconv(encoder_dim)
 		self.TDenc2=TDconv(encoder_dim)
+
 	def forward(self,x):
-		#video of size batch*g_video_sample*channel*height*width
+		unsqueeze=False	
+		if len(x.shape)==4:
+
+			unsqueeze=True
+			x=x.unsqueeze(dim=1)
+	#video of size batch*g_video_sample*channel*height*width
 		x=self.video_encoder(x)#return batch*g_video_sample*encode_dim
 		x=self.TDenc1(x)#return batch*g_video_sample*encode_dim
 		x=self.TDenc2(x)#return batch*g_video_sample*encode_dim
+		if unsqueeze==True:
+			x=x.squeeze(dim=1)
 		return x	
 
 
