@@ -7,7 +7,7 @@ import math
 
 
 g_encode_dim=512
-g_encode_kernel=3#odd
+g_encode_kernel=3#provide an odd number
 g_video_sample=1
 
 class frame_feature_extraction(nn.Module):
@@ -19,7 +19,8 @@ class frame_feature_extraction(nn.Module):
 		self.fc=nn.Linear(1000,transfer_dim)
 
 	def forward(self,x):
-		x=self.resnet(x)
+		with torch.no_grad():
+			x=self.resnet(x)
 		x=self.fc(x)
 		return x
 
@@ -62,13 +63,11 @@ class TDconv(nn.Module):
 
 		x_filter=x_filter+a
 		x_filter=self.sig(x_filter)*(g_video_sample-1)##modification
-		print("x_filter_before",x_filter[0][0])#delete
 		x_filter=x_filter-b
 		x_filter=1-torch.abs(x_filter)
-		#print("x_filter_before",x_filter,"gradient",x_filter.grad)#delete
 		x_filter=self.relu(x_filter)
 		
-		print("x_filter",x_filter[0][0])#delete
+		#print("x_filter",x_filter[:3])#delete
 		
 		x=x.unsqueeze(dim=1)#return batch*1*g_video_sample*encode_dim
 		x_filter=x_filter.unsqueeze(dim=3)#return  batch*(g_encode_kernel*g_video_sample)*g_video_sample*1
@@ -105,7 +104,7 @@ class TDconvE(nn.Module):
 
 			unsqueeze=True
 			x=x.unsqueeze(dim=1)
-	#video of size batch*g_video_sample*channel*height*width
+		#video of size batch*g_video_sample*channel*height*width
 		x=self.video_encoder(x)#return batch*g_video_sample*encode_dim
 		x=self.TDenc1(x)#return batch*g_video_sample*encode_dim
 		x=self.TDenc2(x)#return batch*g_video_sample*encode_dim
