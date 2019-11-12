@@ -29,12 +29,19 @@ def build_word(args):
 			else:
 				word_count[w]+=1
 	word_count={w:c for w,c in word_count.items() if c >= min_count}
-	w2i={w:i for i,w in enumerate(word_count)}
-	w2i['<sos>']=len(w2i)
-	w2i['<eos>']=len(w2i)
-	w2i['<pad>']=len(w2i)
-	w2i['<unk>']=len(w2i)
+	
+	#word to index
+	w2i={}
+	w2i['<pad>']=len(w2i)#0
+	w2i['<sos>']=len(w2i)#1
+	w2i['<eos>']=len(w2i)#2
+	w2i['<unk>']=len(w2i)#3
+	for w in word_count.keys():
+		w2i[w]=len(w2i)
+
+	#index to word
 	i2w={i:w for w,i in w2i.items()}
+
 	sen_in=[]
 	for s in sen:
 		sen_temp=[w2i['<sos>']]

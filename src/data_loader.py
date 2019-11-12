@@ -4,7 +4,7 @@ import os
 from skimage import io
 import torch 
 
-g_video_sample=25
+g_sample=25
 
 class msr_vtt_dataset(Dataset):
 	def __init__(self,data_dir,split,batch):
@@ -13,7 +13,7 @@ class msr_vtt_dataset(Dataset):
 
 		self.batch=batch
 		self.split=os.path.join(data_dir,split)
-		#self.w2i=vocab['w2i']
+		self.w2i=vocab['w2i']
 		#self.i2w=vocab['i2w']
 		sen_in=vocab['sen_in']
 		video_id=vocab['video_id']
@@ -36,18 +36,21 @@ class msr_vtt_dataset(Dataset):
 
 	def __getitem__(self,idx):
 		
-		images=torch.zeros(len(self.sen_in[idx]),g_video_sample,3,256,256)	
+		images=torch.zeros(len(self.sen_in[idx]),g_sample,3,256,256)	
 		for i_batch,video_id in enumerate(self.video_id[idx]):
 			images_list=os.listdir(os.path.join(self.split,video_id))
 			for i_sample,image in enumerate(images_list):
 				images[i_batch][i_sample]=torch.from_numpy(io.imread(os.path.join(os.path.join(self.split,video_id),image)).transpose(2,0,1))
-		
-		max_len=max([len(i) for i in self.sen_in[idx]])
-		sen=torch.zeros(images.shape[0],max_len)
+
+		len=[len(i) for i in self.sen_in[idx]]		
+		max_len=max(len)
+		sen=torch.new_full((images.shape[0],max_len),w2i['<pad>'])
 		for i_batch,sen_in in enumerate(self.sen_in[idx]):
 			sen[i_batch][:len(sen_in)]=torch.tensor(sen_in)
-		#return images batch*25*3*256*256 5d tensor,sen is a 2d tensor of size batch*(max_len of this batch) containing word index.
-		#return	images,sen
+		#return images batch*25*3*256*256 5d tensor.
+		#sen is a 2d tensor of size batch*(max_len of this batch) containing word index padded with 0.
+		#len is a list(len=batch) of int(length of each sentence in this batch including <sos> and <eos>).
+		return	images,sen,len
 
 	def __len__(self):
 		return len(self.sen_in)

@@ -6,6 +6,9 @@ from pytube import YouTube
 import ffmpeg
 from itertools import repeat
 
+g_sample=25
+
+
 def download_and_sample(args):
 
 	msr_vtt=args.file
@@ -64,8 +67,8 @@ def __sample_image(video,output_dir):
 	end=video['end time']
 	if end<0 or end>len or start<0 or start>len or end<start:
 		return
-	for i in range(0,25):
-		time=start+(end-start)*i/25
+	for i in range(0,g_sample):
+		time=start+(end-start)*i/g_sample
 		(
 			ffmpeg
 			.input(video_name, ss=time)
