@@ -42,15 +42,15 @@ class msr_vtt_dataset(Dataset):
 			for i_sample,image in enumerate(images_list):
 				images[i_batch][i_sample]=torch.from_numpy(io.imread(os.path.join(os.path.join(self.split,video_id),image)).transpose(2,0,1))
 
-		len=[len(i) for i in self.sen_in[idx]]		
-		max_len=max(len)
-		sen=torch.new_full((images.shape[0],max_len),w2i['<pad>'])
+		lengths=[len(i) for i in self.sen_in[idx]]		
+		max_len=max(lengths)
+		sen=torch.zeros(images.shape[0],max_len).type(torch.LongTensor)
 		for i_batch,sen_in in enumerate(self.sen_in[idx]):
-			sen[i_batch][:len(sen_in)]=torch.tensor(sen_in)
+			sen[i_batch][:lengths[i_batch]]=torch.tensor(sen_in)
 		#return images batch*25*3*256*256 5d tensor.
 		#sen is a 2d tensor of size batch*(max_len of this batch) containing word index padded with 0.
-		#len is a list(len=batch) of int(length of each sentence in this batch including <sos> and <eos>).
-		return	images,sen,len
+		#lengghs is a list(len=batch) of int(length of each sentence in this batch including <sos> and <eos>).
+		return	images,sen,lengths
 
 	def __len__(self):
 		return len(self.sen_in)

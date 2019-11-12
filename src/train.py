@@ -1,38 +1,48 @@
 from data_loader import msr_vtt_dataset
-form encoder import TDconvE
+from encoder import ResTDconvE
 from decoder import TDconvD
 import torch
 import torch.nn as nn
 import argparse
+from torch.utils.data import DataLoader
+
+output=open("./log","w+") 
 
 def train(args):
 	
-	device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+	device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
 
-	msr_vtt=msr_vtt_dataset(args.data_dir,split="train",args.batch_size)
-	data = DataLoader(msr_vtt,batch_size=1,shuffle=True)
+	msr_vtt=msr_vtt_dataset(args.data_dir,"train",args.batch_size)
+	data = DataLoader(msr_vtt,batch_size=1,shuffle=False)
 	
-	encoder = TDconvE(args.encode_dim).to(device)
-	decoder = TDconvD(args.embed_size, args.hidden_size, len(vocab)).to(device)
+	encoder = ResTDconvE(args).to(device)
+	decoder = TDconvD(args.embed_dim, args.decoder_dim, args.encoder_dim, len(msr_vtt.w2i)).to(device)
 
 	criterion = nn.CrossEntropyLoss(ignore_index=0)
 	params = list(decoder.parameters()) + list(encoder.parameters())
-	optimizer = torch.optim.Adam(params, lr=args.learning_rate)
+	optimizer = torch.optim.Adam(params, lr=args.lr)
 
 	for i_epoch in range(args.epoch):
-		for i_b,images,sen_in,len in tqdm(enumerate(data))
+		for i_b,(images,sen_in,lengths) in enumerate(data):
+			if i_b%500==499:
+				break
 			
-			images=images.unsqueeze(0).to(device)
-			sen_in=sen_in.unsqueeze(0).to(device)
-
+			images=images.squeeze(0).to(device)
+			sen_in=sen_in.squeeze(0).to(device)
 			#images batch*25*3*256*256 5d tensor.
 			#sen_in is a 2d tensor of size batch*(max_len of this batch) containing word index.
 			#len is a list(len=batch) of int(length of each sentence in this batch including <sos> and <eos>).
 
 			features=encoder(images)	
-
-
-
+			outputs=decoder(features,sen_in,lengths)
+			loss=criterion(outputs.reshape(-1,outputs.shape[2]),sen_in[:,1:].reshape(-1))
+			if i_b%1 ==0:
+				print(f"Epoch: {i_epoch+1:05}/{args.epoch} , Batch: {i_b+1}/{len(data)} Loss: {loss}")
+				output.write(f"Epoch: {i_epoch+1:05}/{args.epoch} , Batch: {i_b+1}/{len(data)} Loss: {loss}")
+			encoder.zero_grad()
+			decoder.zero_grad()
+			loss.backward()
+			optimizer.step()
 
 
 
@@ -40,12 +50,15 @@ def train(args):
 
 if __name__=="__main__":
 	
-	parser = argparse.ArgumentParser(description='download and sample images')
+	parser = argparse.ArgumentParser(description='train TDconvED')
 	parser.add_argument('--data_dir',default='./data',help='directory for sampled images')
 	parser.add_argument('--batch_size',type=int,default=16,help='batch size')
-	parser.add_argument('--encode_size',type=int,default=256,help='dimension for TDconvE')
-	parser.add_argument('--decode_size',type=int,default=256,help='dimension for TDconvD')
-	parser.add_argument('--',type=int,default=256,help='dimension for TDconvD')
+	parser.add_argument('--encoder_dim',type=int,default=256,help='dimension for TDconvE')
+	parser.add_argument('--decoder_dim',type=int,default=256,help='dimension for TDconvD')
+	parser.add_argument('--embed_dim',type=int,default=256,help='dimension for word embedding')
+	parser.add_argument('--device',type=str,default='cuda:0',help='default to cuda:0 if gpu available else cpu')
+	parser.add_argument('--epoch',type=int,default=10,help='total epochs to train.')
+	parser.add_argument('--lr',type=float,default=0.001,help='learning rate for optimizer.')
 	#parser.add_argument('--attention_size',type=int,default=256,help='dimension for attention')
 
 

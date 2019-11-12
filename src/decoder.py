@@ -19,7 +19,7 @@ g_video_sample = 1
 
     
 class TDconvD(nn.Module):
-    def __init__(self, embed_size,decode_dim, vocab_size,encode_dim,max_predict_length=20): 
+    def __init__(self, embed_size,decode_dim,encode_dim,vocab_size,max_predict_length=20): 
         super(TDconvD, self).__init__()
         self.relu=nn.ReLU()        
         self.embed = nn.Embedding(vocab_size, embed_size)       #Wi + embeddings of the input
@@ -33,12 +33,15 @@ class TDconvD(nn.Module):
         self.max_predict_length=max_predict_length
         self.softmax=nn.Softmax(dim=2)
     def forward(self, encode, captions, lengths):   
-        
+
+        #for image captioning.
         if(len(encode.shape)==2):
             encode = encode.unsqueeze(dim=1)
-        #z = batch * g_video_sample * g_encoder_dim 3d tensor
-        #caption = batch * max_label_length(includes <sos>,<eos>) 2d tensor
-        #lengths = list of int of length batch
+
+        #z = batch * g_video_sample * encoder_dim 3d tensor.
+        #caption = batch * max_label_length(includes <sos>,<eos>) 2d tensor.
+        #lengths = list(len=batch) of int.
+
         embeddings = self.embed(captions)   #batch * max_label_length * embed_size
         encode = encode.mean(dim=1,keepdim=True) #z batch * 1 * encode_dim  
                
@@ -55,14 +58,15 @@ class TDconvD(nn.Module):
         encode=encode.transpose(1,2) 
         
         encode = self.linear2(encode)
-        print("encode",encode[0][1][:100],encode.shape)
+        #print("encode",encode[0][1][:100],encode.shape)
         outputs = self.softmax(encode)
-        print("outputs",outputs[0][1][:100],outputs.shape)
-        print("captions",captions)
-        print("predict",outputs.max(dim=2)[1][:,:-1])
-        time.sleep(1)
-        #outputs of size batch*max_label_len*vocab_size
-        return outputs
+        #print("outputs",outputs[0][1][:100],outputs.shape)
+        #print("captions",captions)
+        #print("predict",outputs.max(dim=2)[1][:,:-1])
+        #time.sleep(1)
+	#we don't want the last prediction, the one predicted by <eos> of the longest sentence.
+        #outputs of size batch*(max_label_len-1)*vocab_size
+        return outputs[:,:-1,:]
 
     def sample(self,z, states=None):
         """Generate captions for given image features using greedy search."""
