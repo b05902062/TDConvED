@@ -6,7 +6,12 @@ from pytube import YouTube
 import ffmpeg
 from itertools import repeat
 
-def download_and_sample(msr_vtt,output_dir):
+def download_and_sample(args):
+
+	msr_vtt=args.file
+	output_dir=args.output_dir
+
+
 
 	with open(msr_vtt,"r") as f:
 		msr_vtt=json.load(f)['videos']
@@ -74,8 +79,8 @@ def __sample_image(video,output_dir):
 
 if __name__=="__main__":
 	parser = argparse.ArgumentParser(description='download and sample images')
-	parser.add_argument('--output_dir',help='output directory for sampled images')
 	parser.add_argument('--file',help='path to msr vtt json file')
+	parser.add_argument('--output_dir',default='./data',help='output directory for sampled images')
 
 	args = parser.parse_args()
-	download_and_sample(args.file,args.output_dir)
+	download_and_sample(args)
