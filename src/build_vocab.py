@@ -11,12 +11,16 @@ def build_word(args):
 		os.mkdir(output_dir)
 
 	with open(msr_vtt_file,"r") as f:
-		j_sen=json.load(f)['sentences']
+		msr_vtt=json.load(f)
+
+	video_downloaded=os.listdir(os.path.join(output_dir,msr_vtt['videos'][0]['split']))
+
 	sen=[]
 	video_id=[]
-	for s in j_sen:
-		video_id.append(s['video_id'])
-		sen.append(s['caption'])
+	for s in msr_vtt['sentences']:
+		if s['video_id'] in video_downloaded:
+			video_id.append(s['video_id'])
+			sen.append(s['caption'])
 	word_count={}
 	for s in sen:
 		for w in s.strip().split(' '):
@@ -42,8 +46,8 @@ def build_word(args):
 		sen_temp.append(w2i['<eos>'])
 		sen_in.append(sen_temp)
 
-	#sen_in is a list(len=number of sentence) of list(len=len of that sentence) of word index. All index is in i2w.
-	#video_id is a list(len=number of sentence) of string(the video this sentence corresponds to).
+	#sen_in is a list(len=number of total sentence) of list(len=len of that sentence) of word index. All index is in i2w.
+	#video_id is a list(len=first len of sen_in) of string(the video this sentence corresponds to).
 	#w2i is a mapping from word(string) to index(int)
 	#i2w is a inverse mapping of w2i
 	
