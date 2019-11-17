@@ -14,7 +14,7 @@ def train(args):
 	device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
 
 	msr_vtt=msr_vtt_dataset(args.data_dir,"train",args.batch_size)
-	data = DataLoader(msr_vtt,batch_size=1,shuffle=False)
+	data = DataLoader(msr_vtt,batch_size=1,shuffle=True)
 	
 	encoder = ResTDconvE(args).to(device)
 	decoder = TDconvD(args.embed_dim, args.decoder_dim, args.encoder_dim, len(msr_vtt.w2i)).to(device)
@@ -25,8 +25,6 @@ def train(args):
 
 	for i_epoch in range(args.epoch):
 		for i_b,(images,sen_in,lengths) in enumerate(data):
-			if i_b%500==50:
-				break
 			
 			images=images.squeeze(0).to(device)
 			sen_in=sen_in.squeeze(0).to(device)

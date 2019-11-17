@@ -42,23 +42,17 @@ class TDconvD(nn.Module):
 		
 		encode = torch.cat((encode, embeddings), 2) #batch * max_label_length * (embed_siencodee + encode_dim)	  
 		encode = self.linear1(encode)				#batch*max_label*decode_dim
-		encode = self.relu(encode)
 		encode = encode.transpose(1,2)			  #batch * decode_dim* max_lable_len
-		#print("shifted_1",self.embed.weight)
-		#print("shifted_1",self.shifted_conv1.shifted_conv.weight.shape)
 	  
 		encode = self.shifted_conv1(encode)			  #batch * decode_dim*max_label_len
 		encode = self.shifted_conv2(encode)			  #batch * decode_dim * max_label_len
 		encode=encode.transpose(1,2) 
 		
 		encode = self.linear2(encode)
-		#print("encode",encode[0][1][:100],encode.shape)
 		outputs = self.softmax(encode)
-		#print("outputs",outputs[0][1][:100],outputs.shape)
-		#print("captions",captions[:,1:])
-		#print("predict",outputs.max(dim=2)[1][:,:-1])
-		#time.sleep(1)
-	#we don't want the last prediction, the one predicted by <eos> of the longest sentence.
+		#####print("captions",captions[:,1:])
+		#####print("predict",outputs.max(dim=2)[1][:,:-1])
+		#we don't want the last prediction, the one predicted by <eos> of the longest sentence.
 		#outputs of size batch*(max_label_len-1)*vocab_size
 		return outputs[:,:-1,:]
 	"""
@@ -106,7 +100,6 @@ class Shifted_conv(nn.Module):
 		Wi = self.shifted_conv(Wi)	  #batch * 2decode_dim * (max_label_len+g_decode_kernel_size-1)
 		
 		Wi=Wi[:,:,:-(g_decode_kernel_size-1)]
-		Wi=self.relu(Wi) 
 		Wi=sig_gate(Wi)+Wi_temp		
 		#return batch * decode_dim*max_label_len
 		return Wi
