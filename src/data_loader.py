@@ -14,7 +14,7 @@ class msr_vtt_dataset(Dataset):
 		self.batch=batch
 		self.split=os.path.join(data_dir,split)
 		self.w2i=vocab['w2i']
-		#self.i2w=vocab['i2w']
+		self.i2w=vocab['i2w']
 		sen_in=vocab['sen_in']
 		video_id=vocab['video_id']
 		self.sen_in=[]

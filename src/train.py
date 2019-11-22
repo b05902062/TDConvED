@@ -17,15 +17,16 @@ def train(args):
 	data = DataLoader(msr_vtt,batch_size=1,shuffle=True)
 	
 	encoder = ResTDconvE(args).to(device)
-	decoder = TDconvD(args.embed_dim, args.decoder_dim, args.encoder_dim, len(msr_vtt.w2i)).to(device)
+	decoder = TDconvD(args.embed_dim, args.decoder_dim, args.encoder_dim, len(msr_vtt.w2i),device).to(device)
 
 	criterion = nn.CrossEntropyLoss(ignore_index=0)
-	params = list(decoder.shifted_conv1.parameters())+list(decoder.shifted_conv2.parameters())+list(decoder.linear2.parameters())+list(decoder.linear1.parameters()) + list(encoder.parameters())
+	params = list(decoder.parameters()) + list(encoder.parameters())
 	optimizer = torch.optim.Adam(params, lr=args.lr)
 
 	for i_epoch in range(args.epoch):
 		for i_b,(images,sen_in,lengths) in enumerate(data):
-			
+			if i_b%500==30:
+				break	
 			images=images.squeeze(0).to(device)
 			sen_in=sen_in.squeeze(0).to(device)
 			#images batch*25*3*256*256 5d tensor.
@@ -45,20 +46,24 @@ def train(args):
 			loss.backward()
 			optimizer.step()
 
-
+			if i_b==1:
+				predict=decoder.predict(features)
+				predict=[[msr_vtt.i2w[str(o.item())] for o in i] for i in predict]
+				print(predict)
 
 
 
 if __name__=="__main__":
 	
 	parser = argparse.ArgumentParser(description='train TDconvED')
-	parser.add_argument('--data_dir',default='./data',help='directory for sampled images')
+	parser.add_argument('--data_dir',default='./data/msr_vtt',help='directory for sampled images')
+	parser.add_argument('--vocab_dir',default='./data/msr_vtt',help='directory for preprocessed data')
 	parser.add_argument('--batch_size',type=int,default=16,help='batch size')
 	parser.add_argument('--encoder_dim',type=int,default=32,help='dimension for TDconvE')
 	parser.add_argument('--decoder_dim',type=int,default=32,help='dimension for TDconvD')
 	parser.add_argument('--embed_dim',type=int,default=32,help='dimension for word embedding')
 	parser.add_argument('--device',type=str,default='cuda:0',help='default to cuda:0 if gpu available else cpu')
-	parser.add_argument('--epoch',type=int,default=100,help='total epochs to train.')
+	parser.add_argument('--epoch',type=int,default=1000,help='total epochs to train.')
 	parser.add_argument('--lr',type=float,default=0.001,help='learning rate for optimizer.')
 	#parser.add_argument('--attention_size',type=int,default=256,help='dimension for attention')
 

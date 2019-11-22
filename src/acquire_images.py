@@ -82,8 +82,8 @@ def __sample_image(video,output_dir):
 
 if __name__=="__main__":
 	parser = argparse.ArgumentParser(description='download and sample images')
-	parser.add_argument('--file',help='path to msr vtt json file')
-	parser.add_argument('--output_dir',default='./data',help='output directory for sampled images')
+	parser.add_argument('--file',devault='./data/msr_vtt/videodatainfo_2017.json',help='path to msr vtt json file')
+	parser.add_argument('--data_dir',default='./data/msr_vtt',help='output directory for sampled images')
 
 	args = parser.parse_args()
 	download_and_sample(args)

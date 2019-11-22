@@ -65,9 +65,9 @@ def build_word(args):
 
 
 if __name__=="__main__":
-	parser = argparse.ArgumentParser(description='download and sample images')
-	parser.add_argument('--file',help='path to msr vtt json file')
-	parser.add_argument('--output_dir',default='./data',help='output directory for sampled images')
+	parser = argparse.ArgumentParser(description='preprocess data')
+	parser.add_argument('--file',default='./data/msr_vtt/videodatainfo_2017.json',help='path to msr vtt json file')
+	parser.add_argument('--data_dir',default='./data/msr_vtt',help='output directory for preprocessed data.')
 	parser.add_argument('--min_count',default=20,type=int,help='turn words occur less than min_count into <unk>.')
 
 	args = parser.parse_args()
