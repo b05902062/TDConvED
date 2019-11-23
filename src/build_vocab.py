@@ -4,6 +4,7 @@ import os
 
 def build_word(args):
 	msr_vtt_file=args.file
+	image_dir=args.image_dir
 	output_dir=args.output_dir
 	min_count=args.min_count
 
@@ -12,15 +13,21 @@ def build_word(args):
 
 	with open(msr_vtt_file,"r") as f:
 		msr_vtt=json.load(f)
-
-	video_downloaded=os.listdir(os.path.join(output_dir,msr_vtt['videos'][0]['split']))
+	video_downloaded=os.listdir(os.path.join(image_dir,msr_vtt['videos'][0]['split']))
+	ref={}
+	for s in msr_vtt['sentences']:
+		if s['video_id'] in video_downloaded:
+			if s['video_id'] not in ref.keys():
+				ref[s['video_id']]=[s['caption']]	
+			else:
+				ref[s['video_id']].append(s['caption'])
 
 	sen=[]
 	video_id=[]
-	for s in msr_vtt['sentences']:
-		if s['video_id'] in video_downloaded:
-			video_id.append(s['video_id'])
-			sen.append(s['caption'])
+	for id,ss in ref.items():
+		for s in ss:
+			video_id.append(id)
+			sen.append(s)
 	word_count={}
 	for s in sen:
 		for w in s.strip().split(' '):
@@ -46,28 +53,30 @@ def build_word(args):
 	for s in sen:
 		sen_temp=[w2i['<sos>']]
 		for w in s.strip().split(' '):
-			if w not in word_count.keys():
+			if w not in w2i.keys():
 				sen_temp.append(w2i['<unk>'])
 			else:
 				sen_temp.append(w2i[w])
 		sen_temp.append(w2i['<eos>'])
 		sen_in.append(sen_temp)
 
-	#sen_in is a list(len=number of total sentence) of list(len=len of that sentence) of word index. All index is in i2w.
+	#sen_in is a list(len=number of total sentences for all videos) of list(len=len of that sentence) of word index(int). All index is in i2w.
 	#video_id is a list(len=first len of sen_in) of string(the video this sentence corresponds to).
-	#w2i is a mapping from word(string) to index(int)
-	#i2w is a inverse mapping of w2i
+	#ref is a dictionary whose keys are video_id(string) and values are a list of raw sentences belonging to that video_id.
+	#w2i is a mapping from word(string) to index(int).
+	#i2w is a inverse mapping of w2i. Though int to string above, json convert int key to string key. So this is string to string.
 	
-	vocab={'w2i':w2i,'i2w':i2w,'video_id':video_id,'sen_in':sen_in}
-	with open(os.path.join(output_dir,"vocab.json"),"w") as f:
+	vocab={'w2i':w2i,'i2w':i2w,'ref':ref,'video_id':video_id,'sen_in':sen_in}
+	with open(os.path.join(output_dir,f"{msr_vtt['videos'][0]['split']}_vocab.json"),"w") as f:
 		json.dump(vocab,f)
 		
 
 
 if __name__=="__main__":
 	parser = argparse.ArgumentParser(description='preprocess data')
-	parser.add_argument('--file',default='./data/msr_vtt/videodatainfo_2017.json',help='path to msr vtt json file')
-	parser.add_argument('--data_dir',default='./data/msr_vtt',help='output directory for preprocessed data.')
+	parser.add_argument('--file',default='../data/msr_vtt/train.json',help='path to msr vtt json file')
+	parser.add_argument('--image_dir',default='../data/msr_vtt',help='directory to downloaded images.')
+	parser.add_argument('--output_dir',default='../data/msr_vtt',help='output directory for preprocessed data.')
 	parser.add_argument('--min_count',default=20,type=int,help='turn words occur less than min_count into <unk>.')
 
 	args = parser.parse_args()

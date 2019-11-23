@@ -5,6 +5,7 @@ from multiprocessing import Pool
 from pytube import YouTube
 import ffmpeg
 from itertools import repeat
+import shutil
 
 g_sample=25
 
@@ -36,7 +37,16 @@ def download_and_sample(args):
 	p.close()
 	p.join()
 	
-	
+	#delete video files that's somehow left behind.
+	dir=[i for i in os.listdir(output_dir) if i.find('.mp4')!=-1]
+	for i in dir:
+		os.remove(os.path.join(output_dir,i))
+	#delete directory that somehow doesn't have g_sample images.
+	dir=os.listdir(output_dir)
+	for i in dir:
+		if len(os.listdir(os.path.join(output_dir,i)))!=g_sample:
+			shutil.rmtree(os.path.join(output_dir,i))	
+			
 def __download_sample(video,output_dir):
 
 	try:
@@ -82,8 +92,8 @@ def __sample_image(video,output_dir):
 
 if __name__=="__main__":
 	parser = argparse.ArgumentParser(description='download and sample images')
-	parser.add_argument('--file',devault='./data/msr_vtt/videodatainfo_2017.json',help='path to msr vtt json file')
-	parser.add_argument('--data_dir',default='./data/msr_vtt',help='output directory for sampled images')
-
+	parser.add_argument('--file',default='../data/msr_vtt/train.json',help='path to msr vtt json file')
+	parser.add_argument('--output_dir',default='../data/msr_vtt',help='output directory for sampled images')
 	args = parser.parse_args()
+	assert os.path.exists(args.output_dir),"--output_dir doesn't exist."
 	download_and_sample(args)
