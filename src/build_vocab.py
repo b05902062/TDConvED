@@ -18,16 +18,16 @@ def build_word(args):
 	for s in msr_vtt['sentences']:
 		if s['video_id'] in video_downloaded:
 			if s['video_id'] not in ref.keys():
-				ref[s['video_id']]=[s['caption']]	
+				ref[s['video_id']]=[[i for i in s['caption'].strip().split()]]	
 			else:
-				ref[s['video_id']].append(s['caption'])
+				ref[s['video_id']].append([i for i in s['caption'].strip().split()])
 
 	sen=[]
 	video_id=[]
-	for id,ss in ref.items():
-		for s in ss:
-			video_id.append(id)
-			sen.append(s)
+	for s in msr_vtt['sentences']:
+		if s['video_id'] in video_downloaded:
+			video_id.append(s['video_id'])
+			sen.append(s['caption'])
 	word_count={}
 	for s in sen:
 		for w in s.strip().split(' '):
@@ -62,7 +62,7 @@ def build_word(args):
 
 	#sen_in is a list(len=number of total sentences for all videos) of list(len=len of that sentence) of word index(int). All index is in i2w.
 	#video_id is a list(len=first len of sen_in) of string(the video this sentence corresponds to).
-	#ref is a dictionary whose keys are video_id(string) and values are a list of raw sentences belonging to that video_id.
+	#ref is a dictionary whose keys are video_id(string) and values are captions for the video. Value is a list(len=# of sentences for the video) of list(len=length of the sentence) of strings.
 	#w2i is a mapping from word(string) to index(int).
 	#i2w is a inverse mapping of w2i. Though int to string above, json convert int key to string key. So this is string to string.
 	

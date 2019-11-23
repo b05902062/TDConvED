@@ -29,7 +29,7 @@ class TDconvD(nn.Module):
 
 		#encode = batch * g_sample * encode_dim 3d tensor.
 		#caption = batch * max_label_length(includes <sos>,<eos>) 2d tensor.
-		#lengths = list(len=batch) of int(length of above captions including <sos>,<eos>,<unk>,but not <pad>).
+		#lengths = 1*batch 2d tensor(length of above captions including <sos>,<eos>,<unk>,but not <pad>).
 
 		embeddings = self.embed(captions)
 		#batch * max_label_length * embed_size
@@ -65,7 +65,7 @@ class TDconvD(nn.Module):
 		concat = features.mean(dim=1,keepdim=True).expand(features.shape[0],g_decode_kernel_size,features.shape[2]) #concat batch* g_decode_kernel_size * encode_dim  
 		#left side padded with kernel size -1 0.
 		sampled_ids = torch.zeros([features.shape[0],max_predict_length+(g_decode_kernel_size-1)]).type(torch.LongTensor).to(self.device)
-		sampled_ids[:,g_decode_kernel_size]=1#<sos>
+		sampled_ids[:,g_decode_kernel_size-1]=1#<sos>
 		for i in range(max_predict_length-1):
 			embedding=self.embed(sampled_ids[:,i:i+g_decode_kernel_size])#batch*g_decode_kernel_size*enbed_dim
 			cnn=torch.cat((concat,embedding),dim=2)
@@ -75,9 +75,8 @@ class TDconvD(nn.Module):
 			cnn=self.shifted_conv2(cnn)#batch*decode_dim*g_decode_kernel_size
 			cnn=cnn.transpose(1,2)[:,g_decode_kernel_size-1,:]#batch*decode_dim. we want the last one from conv.
 			cnn=self.linear2(cnn)
-			outputs = F.softmax(cnn,dim=1)
-			sampled_ids[:,i+g_decode_kernel_size]=outputs.max(dim=1)[1]
-		return sampled_ids[g_decode_kernel_size-1:]#batch*max_predict_length containing label id.
+			sampled_ids[:,i+g_decode_kernel_size]=cnn.max(dim=1)[1]
+		return sampled_ids[:,g_decode_kernel_size-1:]#batch*max_predict_length containing label id.
 def sig_gate(x):
 	sig = nn.Sigmoid()
 	out_dim = int(x.shape[1]/2)
