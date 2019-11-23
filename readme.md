@@ -10,14 +10,18 @@ work is going on.
 ## usage:
 #### downlod videos and sample images from videos:
 
-        python3 acquire_images.py --file <path_to_json_file>
+        #defualt is to download training dataset
+        python3 acquire_images.py
         
-        e.g. python3 acquire_images.py --file ./videodatainfo_2017.json
+        #download testing dataset
+        python3 acquire_images.py --file ../data/msr_vtt/test.json
 
-the process takes about 4hrs on our machine and takes 2GB of disk space.
+The process takes about 2.5hrs and 1hrs on our machine. It takes about 1.2GB and 0.6GB of disk space respectively.
 
 #### build vocabulary:
 
-        python3 build_vocab.py --file <path_to_json_file>
+        #default is to build training vocabulary.
+        python3 build_vocab.py
         
-        e.g. python3 build_vocab.py --file ./videodatainfo_2017.json
+        #build testing vocabulary
+        python3 build_vocab.py --min_count 1 --file ../data/msr_vtt/test.json
