@@ -1,5 +1,6 @@
 /models
-/log
+/logs
+/checkpoints
 */__pycache__*
 *log*
 *output*
