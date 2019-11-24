@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 import uuid
 from nltk.translate.bleu_score import sentence_bleu
 import os 
+from torch.nn.utils import clip_grad_norm_
 
 ID=uuid.uuid4()
 
@@ -29,11 +30,16 @@ def train(args):
 	BLEU_test=DataLoader(BLEU_test_meta,batch_size=1,shuffle=False)
 	
 	encoder = ResTDconvE(args).to(device)
+	
+	#fix pretrained resnet
+	for p in encoder.video_encoder.frame_encode.resnet.parameters():
+		p.requires_grad=False
+
 	decoder = TDconvD(args.embed_dim, args.decoder_dim, args.encoder_dim, len(train_meta.w2i),device).to(device)
 
 	criterion = nn.CrossEntropyLoss(ignore_index=0)
 	params = list(decoder.parameters()) + list(encoder.parameters())
-	optimizer = torch.optim.Adam(params, lr=args.lr)
+	optimizer = torch.optim.Adam([p for p in params if p.requires_grad is True], lr=args.lr)
 	start=0
 
 	if args.ckp!='':
@@ -66,6 +72,7 @@ def train(args):
 			encoder.zero_grad()
 			decoder.zero_grad()
 			loss.backward()
+			clip_grad_norm_([p for p in params if p.requires_grad is True],1)
 			optimizer.step()
 			"""
 			if i_b==0:

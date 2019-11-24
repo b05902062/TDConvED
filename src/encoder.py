@@ -18,8 +18,7 @@ class frame_feature_extraction(nn.Module):
 
 	def forward(self,x):
 		#x is (batch*g_sample)*channel*height*width
-		with torch.no_grad():
-			x=self.resnet(x)
+		x=self.resnet(x)
 		x=self.fc(x)
 		#x is (batch*g_sample)*transfer_dim
 		return x
