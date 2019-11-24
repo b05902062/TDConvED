@@ -74,6 +74,7 @@ def train(args):
 			loss.backward()
 			clip_grad_norm_([p for p in params if p.requires_grad is True],1)
 			"""
+			#use to debug. if predict is correct. Given the same word token it would produce the same word as decode at the position.
 			if i_b==0:
 				print("answer, second word to last",sen_in[:,1:])
 				print("decode, second to last",outputs.max(dim=2)[1])
@@ -87,19 +88,19 @@ def train(args):
 		in_BLEU=0
 		out_BLEU=0
 		for i_b,(images,_,_) in enumerate(BLEU_train):
-			if i_b%500==10:
+			if i_b==len(BLEU_train)/args.BLEU_eval_ratio:
 				break
 			images=images.squeeze(0).to(device)
 			in_BLEU+=get_BLEU(images,encoder,decoder,train_meta,BLEU_train_meta,i_b)
 
 		for i_b,(images,_,_) in enumerate(BLEU_test):
-			if i_b%500==10:
+			if i_b==len(BLEU_test)/args.BLEU_eval_ratio:
 				break
 			images=images.squeeze(0).to(device)
 			out_BLEU+=get_BLEU(images,encoder,decoder,train_meta,BLEU_test_meta,i_b)
 		
-		in_BLEU=in_BLEU/len(BLEU_train)
-		out_BLEU=out_BLEU/len(BLEU_test)
+		in_BLEU=in_BLEU/(len(BLEU_train)/args.BLEU_eval_ratio)
+		out_BLEU=out_BLEU/(len(BLEU_test)/args.BLEU_eval_ratio)
 
 		print(f"Epoch: {i_epoch+1}/{args.epoch} , train BLEU@4: {in_BLEU} , test BLEU@4: {out_BLEU}")
 		output.write(f"Epoch: {i_epoch+1}/{args.epoch} , train BLEU@4: {in_BLEU} , test BLEU@4: {out_BLEU}")
@@ -143,7 +144,7 @@ if __name__=="__main__":
 	parser.add_argument('--image_dir',default='../data/msr_vtt',help='directory for sampled images')
 	parser.add_argument('--train_vocab',default='../data/msr_vtt/train_vocab.json',help='vocabulary file for training data')
 	parser.add_argument('--test_vocab',default='../data/msr_vtt/test_vocab.json',help='vocabulary file for testing data')
-	parser.add_argument('--batch_size',type=int,default=1,help='batch size')
+	parser.add_argument('--batch_size',type=int,default=16,help='batch size')
 	parser.add_argument('--encoder_dim',type=int,default=256,help='dimension for TDconvE')
 	parser.add_argument('--decoder_dim',type=int,default=256,help='dimension for TDconvD')
 	parser.add_argument('--embed_dim',type=int,default=256,help='dimension for word embedding')
@@ -154,6 +155,7 @@ if __name__=="__main__":
 	parser.add_argument('--log_dir',default='../logs/',help='directory for storing log files')
 	parser.add_argument('--ckp_dir',default='../checkpoints/',help='directory for storing checkpoints.')
 	parser.add_argument('--ckp',default='',help='the checkpoint to be loaded.')
+	parser.add_argument('--BLEU_eval_ratio',type=float,default=0.01,help='proportion of data used to test model. 1 would use all the data to evaluate our model. But it will take a long time.')
 
 
 	args = parser.parse_args()
