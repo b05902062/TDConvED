@@ -34,10 +34,21 @@ def train(args):
 	criterion = nn.CrossEntropyLoss(ignore_index=0)
 	params = list(decoder.parameters()) + list(encoder.parameters())
 	optimizer = torch.optim.Adam(params, lr=args.lr)
+	start=0
 
-	for i_epoch in range(args.epoch):
-		for i_b,(images,sen_in,lengths) in enumerate(train):
+	if args.ckp!='':
+		#load checkpoint
+		checkpoint = torch.load(os.path.join(args.ckp_dir,args.ckp))
+		encoder.load_state_dict(checkpoint['encoder'])
+		decoder.load_state_dict(checkpoint['decoder'])
+		optimizer.load_state_dict(checkpoint['optimizer'])
+		start=checkpoint['epoch']
 		
+
+
+
+	for i_epoch in range(start,args.epoch):
+		for i_b,(images,sen_in,lengths) in enumerate(train):
 			images=images.squeeze(0).to(device)
 			sen_in=sen_in.squeeze(0).to(device)
 			#images batch*25*3*256*256 5d tensor.
@@ -68,24 +79,25 @@ def train(args):
 		out_BLEU=0
 		for i_b,(images,_,_) in enumerate(BLEU_train):
 			images=images.squeeze(0).to(device)
-			in_BLEU+=get_BLEU(images,train_meta,BLEU_train_meta,i_b)
+			in_BLEU+=get_BLEU(images,encoder,decoder,train_meta,BLEU_train_meta,i_b)
 
 		for i_b,(images,_,_) in enumerate(BLEU_test):
 			images=images.squeeze(0).to(device)
-			out_BLEU+=get_BLEU(images,train_meta,BLEU_test_meta,i_b)
+			out_BLEU+=get_BLEU(images,encoder,decoder,train_meta,BLEU_test_meta,i_b)
 		
 		in_BLEU=in_BLEU/len(BLEU_train)
 		out_BLEU=out_BLEU/len(BLEU_test)
 
 		print(f"Epoch: {i_epoch+1}/{args.epoch} , train BLEU@4: {in_BLEU} , test BLEU@4: {out_BLEU}")
 		output.write(f"Epoch: {i_epoch+1}/{args.epoch} , train BLEU@4: {in_BLEU} , test BLEU@4: {out_BLEU}")
-		torch.save({'epoch': i_epoch+1,'model': model.state_dict(),'optimizer_state_dict': optimizer.state_dict(),'in_BLEU@4':in_BLEU,'out_BLEU@4':out_BLEU }, os.path.join(args.ckp_dir,f'{i_epoch+1}th_ckp_{ID}'))
+		torch.save({'epoch': i_epoch+1,'encoder': encoder.state_dict(),'decoder':decoder.state_dict(),'optimizer': optimizer.state_dict(),'in_BLEU@4':in_BLEU,'out_BLEU@4':out_BLEU }, os.path.join(args.ckp_dir,f'{i_epoch+1}th_ckp_{ID}'))
 
-def get_BLEU(images,train_meta,score_meta,index):
+
+def get_BLEU(images,encoder,decoder,train_meta,score_meta,index):
 		#images 1*g_sample*3*256*256 5d tensor.
 		#video_id is a string(name of this video).
 
-		video_id=score_meta.video_id[i_b][0]
+		video_id=score_meta.video_id[index][0]
 		features=encoder(images)
 		predict=decoder.predict(features)
 		#predict is 2d tensor of size 1*max_predict.
@@ -119,14 +131,15 @@ if __name__=="__main__":
 	parser.add_argument('--train_vocab',default='../data/msr_vtt/train_vocab.json',help='vocabulary file for training data')
 	parser.add_argument('--test_vocab',default='../data/msr_vtt/test_vocab.json',help='vocabulary file for testing data')
 	parser.add_argument('--batch_size',type=int,default=16,help='batch size')
-	parser.add_argument('--encoder_dim',type=int,default=32,help='dimension for TDconvE')
-	parser.add_argument('--decoder_dim',type=int,default=32,help='dimension for TDconvD')
-	parser.add_argument('--embed_dim',type=int,default=32,help='dimension for word embedding')
+	parser.add_argument('--encoder_dim',type=int,default=256,help='dimension for TDconvE')
+	parser.add_argument('--decoder_dim',type=int,default=256,help='dimension for TDconvD')
+	parser.add_argument('--embed_dim',type=int,default=256,help='dimension for word embedding')
 	parser.add_argument('--device',type=str,default='cuda:0',help='default to cuda:0 if gpu available else cpu')
 	parser.add_argument('--epoch',type=int,default=10,help='total epochs to train.')
 	parser.add_argument('--lr',type=float,default=0.001,help='learning rate for optimizer.')
 	parser.add_argument('--log_dir',default='../logs/',help='directory for storing log files')
 	parser.add_argument('--ckp_dir',default='../checkpoints/',help='directory for storing checkpoints.')
+	parser.add_argument('--ckp',default='',help='the checkpoint to be loaded.')
 	#parser.add_argument('--attention_size',type=int,default=256,help='dimension for attention')
 
 
