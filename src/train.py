@@ -35,7 +35,7 @@ def train(args):
 	for p in encoder.video_encoder.frame_encode.resnet.parameters():
 		p.requires_grad=False
 
-	decoder = TDconvD(args.embed_dim, args.decoder_dim, args.encoder_dim, len(train_meta.w2i),device).to(device)
+	decoder = TDconvD(args.embed_dim, args.decoder_dim, args.encoder_dim,args.attend_dim, len(train_meta.w2i),device).to(device)
 
 	criterion = nn.CrossEntropyLoss(ignore_index=0)
 	params = list(decoder.parameters()) + list(encoder.parameters())
@@ -73,22 +73,28 @@ def train(args):
 			decoder.zero_grad()
 			loss.backward()
 			clip_grad_norm_([p for p in params if p.requires_grad is True],1)
-			optimizer.step()
 			"""
 			if i_b==0:
+				print("answer, second word to last",sen_in[:,1:])
+				print("decode, second to last",outputs.max(dim=2)[1])
 				predict=decoder.predict(features)
-				print(sen_in[:,1:],outputs.max(dim=2)[1])
-				print(predict)
-				print(get_sentence(predict,train_meta))
+				print("predict, first to last",predict)
+				print("predict,first to last",get_sentence(predict,train_meta))
 			"""
+			optimizer.step()
+
 		#calculate BLEU@4 score.
 		in_BLEU=0
 		out_BLEU=0
 		for i_b,(images,_,_) in enumerate(BLEU_train):
+			if i_b%500==10:
+				break
 			images=images.squeeze(0).to(device)
 			in_BLEU+=get_BLEU(images,encoder,decoder,train_meta,BLEU_train_meta,i_b)
 
 		for i_b,(images,_,_) in enumerate(BLEU_test):
+			if i_b%500==10:
+				break
 			images=images.squeeze(0).to(device)
 			out_BLEU+=get_BLEU(images,encoder,decoder,train_meta,BLEU_test_meta,i_b)
 		
@@ -137,17 +143,17 @@ if __name__=="__main__":
 	parser.add_argument('--image_dir',default='../data/msr_vtt',help='directory for sampled images')
 	parser.add_argument('--train_vocab',default='../data/msr_vtt/train_vocab.json',help='vocabulary file for training data')
 	parser.add_argument('--test_vocab',default='../data/msr_vtt/test_vocab.json',help='vocabulary file for testing data')
-	parser.add_argument('--batch_size',type=int,default=16,help='batch size')
+	parser.add_argument('--batch_size',type=int,default=1,help='batch size')
 	parser.add_argument('--encoder_dim',type=int,default=256,help='dimension for TDconvE')
 	parser.add_argument('--decoder_dim',type=int,default=256,help='dimension for TDconvD')
 	parser.add_argument('--embed_dim',type=int,default=256,help='dimension for word embedding')
+	parser.add_argument('--attend_dim',type=int,default=256,help='dimension for attention')
 	parser.add_argument('--device',type=str,default='cuda:0',help='default to cuda:0 if gpu available else cpu')
-	parser.add_argument('--epoch',type=int,default=10,help='total epochs to train.')
+	parser.add_argument('--epoch',type=int,default=100,help='total epochs to train.')
 	parser.add_argument('--lr',type=float,default=0.001,help='learning rate for optimizer.')
 	parser.add_argument('--log_dir',default='../logs/',help='directory for storing log files')
 	parser.add_argument('--ckp_dir',default='../checkpoints/',help='directory for storing checkpoints.')
 	parser.add_argument('--ckp',default='',help='the checkpoint to be loaded.')
-	#parser.add_argument('--attention_size',type=int,default=256,help='dimension for attention')
 
 
 	args = parser.parse_args()
