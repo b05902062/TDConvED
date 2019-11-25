@@ -10,7 +10,7 @@ g_decode_kernel_size= 7#odd
 
 
 class TDconvD(nn.Module):
-	def __init__(self, embed_size,decode_dim,encode_dim,attend_dim,vocab_size,device,layer=2): 
+	def __init__(self, embed_size,decode_dim,encode_dim,attend_dim,vocab_size,device,layer): 
 		super(TDconvD, self).__init__()
 		self.relu=nn.ReLU()		
 		self.decode_dim=decode_dim
@@ -89,6 +89,7 @@ class TDconvD(nn.Module):
 
 		#broadcast
 		features=features+predict
+		#features of batch * g_sample * attend_dim 3d tensor now.
 		featrues=self.tanh(features)
 		features=self.linear_prob(features).squeeze(dim=2)
 		features=self.softmax(features).unsqueeze(dim=2)
@@ -97,9 +98,9 @@ class TDconvD(nn.Module):
 		return encode
 				
 
-	#add beam search in this version. remove batch predict in this version.
 	#this is a wrapper for self.__predict(), which is the original self.predict().
-	def predict(self,features,beam_size=5, max_predict_length=20):
+	def predict(self,features,return_top=1,beam_size=5, max_predict_length=20):
+		#return_top used to indicate how many sentences to return.
 		
 
 		#max_predict_length is the max length to predict including <sos> so we actually only run it max_predict_length-1 time..
@@ -107,14 +108,18 @@ class TDconvD(nn.Module):
 			features =features.unsqueeze(1)
 		
 		#features 3d tensor of size 1*g_sample*encode_dim now
-		
+		#we only support a batch size of 1.	
+
 		concat = features.mean(dim=1,keepdim=True)
 		#concat of size 1*1*encode_dim  
 
 		#beam_state init (self,layer,decode_dim,kernel,device,max_predict_len)
 		beam_list=[beam_state(self.layer,self.decode_dim,g_decode_kernel_size,self.device,max_predict_length)]#initalize with one instance.
 		final_list=[]
+		#first one is <sos> so we predict for (max_predict_length-1) time.
 		for i in range(max_predict_length-1):
+			if len(beam_list)==0:
+				break
 			new_beam_list=[]
 			new_beam_list_not_final=[]
 			for b in beam_list:
@@ -123,11 +128,7 @@ class TDconvD(nn.Module):
 				new_state,prob=self.__predict(b.state,b.get_last_word(),features,concat)
 				prob_id=prob.argsort(descending=True)
 				for a in range(beam_size):
-					#add(new_state,one new word, one new prob)
-					#z=b.copy().add(new_state,prob_id[a].item(),prob[prob_id[a]].item())
-					#print(z)
 					new_beam_list.append(b.copy().add(new_state,prob_id[a].item(),prob[prob_id[a]].item()))
-					#print(new_beam_list)
 				
 			for b in new_beam_list:
 				if b.word[i+1] is 2:#<eos>
@@ -137,14 +138,20 @@ class TDconvD(nn.Module):
 			beam_list=sorted(new_beam_list_not_final,key=lambda x: x.avg_log_prob(),reverse=True)[:beam_size]
 
 		final_list.extend(beam_list)
-		#return 2d array of size 1*max_predict_len containing word index. first one is always <sos>.
-		return sorted(final_list,key=lambda x: x.avg_log_prob(),reverse=True)[0].word.unsqueeze(dim=0)
+		beam_list=[]
+		score_list=[]
+		for i in range(min(return_top,len(final_list))):
+			beam_list.append(sorted(final_list,key=lambda x: x.avg_log_prob(),reverse=True)[i].word.unsqueeze(dim=0))
+			score_list.append(sorted(final_list,key=lambda x: x.avg_log_prob(),reverse=True)[i].avg_log_prob())
+		#return a list of 2d tensor of size 1*max_predict_len containing word index. first token of each tensor is always <sos>.
+		#return a list of score for the sentences in the same order. score=log(prob_of_entire_sentence)/(#_of_words_in_the_sentence-1). For example,"<sos> i sleep" with probability 1*0,05*0.03. score=log(1*0.05*0.03)/2.
+		return beam_list,score_list
 		
 			
 	#used to produce next word.
 	def __predict(self,state,last_word,features,concat):
-		#should not modify the state passed in.
 		state=state.clone()
+		#state passed in will be left intact.
 		#state of size (layer+1)*1*decode_dim*g_decode_kernel_size. (layer+1)*1*decode_dim*[:(g_decode_kernel_size-1)] should be ready.
 		#last_word is an 1d tensor of size 1. word index.
 		#features is 3d tensor of size 1*g_sample*encode_dim.
@@ -163,6 +170,7 @@ class TDconvD(nn.Module):
 
 		for i_layer,shifted_conv in enumerate(self.shifted_convs):
 			#use the last one of conv output to update next layer.
+			#input and output of shifted_conv are all 1*decode_dim*g_decode_kernel_size
 			state[i_layer+1,:,:,g_decode_kernel_size-1]=shifted_conv(state[i_layer])[:,:,g_decode_kernel_size-1]
 			
 
@@ -194,13 +202,14 @@ class beam_state():
 		self.max_predict_len=max_predict_len
 
 		self.state=torch.zeros([layer+1,1,decode_dim,kernel]).to(device)
-		self.prob=[1]
+		self.prob=[]
 		self.word=torch.zeros([max_predict_len]).type(torch.LongTensor).to(device)
 		self.word[0]=1#<sos>
 	def add(self,state,new_word,new_prob):
+		assert (len(self.prob)+1)<self.max_predict_len, "exceed max predict length"
 		#update state this way so that they won't become the same object.
 		self.state[:,:,:,:]=state[:,:,:,:]
-		self.word[len(self.prob)]=new_word
+		self.word[len(self.prob)+1]=new_word
 		self.prob.append(new_prob)
 		return self
 	def avg_log_prob(self):
@@ -209,7 +218,7 @@ class beam_state():
 			log_prob+=math.log(p)
 		return log_prob/len(self.prob)
 	def get_last_word(self):
-		return self.word[len(self.prob)-1]
+		return self.word[len(self.prob)]
 
 	def copy(self):
 		#deep copy don't work so we copy our self. This should do the job done by copy.deepcopy().

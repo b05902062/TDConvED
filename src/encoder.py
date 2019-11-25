@@ -102,9 +102,11 @@ class ResTDconvE(nn.Module):
 	def __init__(self,args):
 		super(ResTDconvE, self).__init__()
 		encoder_dim=args.encoder_dim
+		self.layer=args.encoder_layer
 		self.video_encoder=video_feature_extraction(encoder_dim)
-		self.TDconvE1=TDconvE(encoder_dim,args.device)
-		self.TDconvE2=TDconvE(encoder_dim,args.device)
+		self.TDconvE=nn.ModuleList()
+		for i in range(args.encoder_layer):
+			self.TDconvE.append(TDconvE(encoder_dim,args.device))
 
 	def forward(self,x):
 		#unsqueeze dim 1 (g_sample) as 1 for image captioning
@@ -116,8 +118,8 @@ class ResTDconvE(nn.Module):
 
 		#video of size batch*g_sample*channel*height*width
 		x=self.video_encoder(x)#return batch*g_sample*encode_dim
-		x=self.TDconvE1(x)#return batch*g_sample*encode_dim
-		x=self.TDconvE2(x)#return batch*g_sample*encode_dim
+		for tdconve in self.TDconvE:
+			x=tdconve(x)#return batch*g_sample*encode_dim
 		#for image captioning
 		if unsqueeze==True:
 			x=x.squeeze(dim=1)
