@@ -55,6 +55,8 @@ def train(args):
 
 	for i_epoch in range(start,args.epoch):
 		for i_b,(images,sen_in,lengths) in enumerate(train):
+			if i_b==1000:
+				break
 			images=images.squeeze(0).to(device)
 			sen_in=sen_in.squeeze(0).to(device)
 			#images batch*25*3*256*256 5d tensor.
@@ -73,34 +75,42 @@ def train(args):
 			decoder.zero_grad()
 			loss.backward()
 			clip_grad_norm_([p for p in params if p.requires_grad is True],1)
-			"""
+			optimizer.step()
+
 			#use to debug. if predict is correct. Given the same word token it would produce the same word as decode at the position.
 			if i_b==0:
+				encoder.eval()
+				decoder.eval()
+				features=encoder(images)	
+				outputs=decoder(features,sen_in,lengths)				
 				print("answer, second word to last",sen_in[:,1:])
 				print("decode, second to last",outputs.max(dim=2)[1])
 				predict=decoder.predict(features)
 				print("predict, first to last",predict)
 				print("predict,first to last",get_sentence(predict,train_meta))
-			"""
-			optimizer.step()
+				encoder.train()
+				decoder.train()
 
 		#calculate BLEU@4 score.
 		in_BLEU=0
 		out_BLEU=0
 		for i_b,(images,_,_) in enumerate(BLEU_train):
-			if i_b==len(BLEU_train)/args.BLEU_eval_ratio:
+			print(i_b,"/",int(len(BLEU_train)*args.BLEU_eval_ratio))
+			if i_b==int(len(BLEU_train)*args.BLEU_eval_ratio):
 				break
 			images=images.squeeze(0).to(device)
 			in_BLEU+=get_BLEU(images,encoder,decoder,train_meta,BLEU_train_meta,i_b)
 
 		for i_b,(images,_,_) in enumerate(BLEU_test):
-			if i_b==len(BLEU_test)/args.BLEU_eval_ratio:
+			print(i_b,"/",int(len(BLEU_test)*args.BLEU_eval_ratio))
+			if i_b==int(len(BLEU_test)*args.BLEU_eval_ratio):
 				break
 			images=images.squeeze(0).to(device)
 			out_BLEU+=get_BLEU(images,encoder,decoder,train_meta,BLEU_test_meta,i_b)
-		
-		in_BLEU=in_BLEU/(len(BLEU_train)/args.BLEU_eval_ratio)
-		out_BLEU=out_BLEU/(len(BLEU_test)/args.BLEU_eval_ratio)
+		assert int(len(BLEU_train)*args.BLEU_eval_ratio)!=0, "BLEU devide by zero. Increase ratio."	
+		assert int(len(BLEU_test)*args.BLEU_eval_ratio)!=0, "BLEU devide by zero. Increase ratio."
+		in_BLEU=in_BLEU/int(len(BLEU_train)*args.BLEU_eval_ratio)
+		out_BLEU=out_BLEU/int(len(BLEU_test)*args.BLEU_eval_ratio)
 
 		print(f"Epoch: {i_epoch+1}/{args.epoch} , train BLEU@4: {in_BLEU} , test BLEU@4: {out_BLEU}")
 		output.write(f"Epoch: {i_epoch+1}/{args.epoch} , train BLEU@4: {in_BLEU} , test BLEU@4: {out_BLEU}")
@@ -150,12 +160,12 @@ if __name__=="__main__":
 	parser.add_argument('--embed_dim',type=int,default=256,help='dimension for word embedding')
 	parser.add_argument('--attend_dim',type=int,default=256,help='dimension for attention')
 	parser.add_argument('--device',type=str,default='cuda:0',help='default to cuda:0 if gpu available else cpu')
-	parser.add_argument('--epoch',type=int,default=100,help='total epochs to train.')
+	parser.add_argument('--epoch',type=int,default=10,help='total epochs to train.')
 	parser.add_argument('--lr',type=float,default=0.001,help='learning rate for optimizer.')
 	parser.add_argument('--log_dir',default='../logs/',help='directory for storing log files')
 	parser.add_argument('--ckp_dir',default='../checkpoints/',help='directory for storing checkpoints.')
 	parser.add_argument('--ckp',default='',help='the checkpoint to be loaded.')
-	parser.add_argument('--BLEU_eval_ratio',type=float,default=0.01,help='proportion of data used to test model. 1 would use all the data to evaluate our model. But it will take a long time.')
+	parser.add_argument('--BLEU_eval_ratio',type=float,default=0.005,help='proportion of data used to test model. 1 would use all the data to evaluate our model. But it will take a long time.')
 
 
 	args = parser.parse_args()
