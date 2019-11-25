@@ -18,6 +18,7 @@ def train(args):
 	
 
 	device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
+	print("using",device)
 
 	#training
 	train_meta=msr_vtt_dataset(args.train_vocab,args.image_dir,"train",args.batch_size)

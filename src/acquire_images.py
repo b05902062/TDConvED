@@ -62,33 +62,50 @@ def __download_sample(video,output_dir):
 
 def __sample_image(video,output_dir):
 
-	video_name=os.path.join(output_dir,video['video_id']+".mp4")
-	probe = ffmpeg.probe(video_name)
-	video_stream = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
-	if video_stream is None:
-		return
-
-	output_dir=os.path.join(output_dir,video['video_id'])
-	if not os.path.exists(output_dir):
-		os.mkdir(output_dir)
-		
-	len=float(video_stream['duration'])
+	video_path=os.path.join(output_dir,video['video_id']+".mp4")
 	start=video['start time']
 	end=video['end time']
+	sample_image(video_path,video['video_id'],start=start,end=end)
+
+
+	
+def sample_image(video_path,output_dir,start=None,end=None):
+	#video_path is the path to video file.
+	#output_dir is the name of the folder that will contain the resultihg sampled images in the same directory as video. For example, videoi_path="/tmp3/TDConvED/hello_world.mp4". output_dir="hello_world". The resulting images will be stored in /tmp3/TDConvED/hello_world.
+	#start is a float specify the start of the video in second.
+	#end is a float specify the end of the video in second.	
+
+	output_abs_dir=os.path.join("/".join(video_path.split("/")[:-1]),output_dir)
+	if not os.path.exists(output_abs_dir):
+		os.mkdir(output_abs_dir)
+
+	probe = ffmpeg.probe(video_path)
+	video_stream = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
+	if video_stream is None:
+		print(video_name,"error")
+		return
+
+	len=float(video_stream['duration'])
+	if start==None:
+		start=float(video_stream['start_time'])
+	if end==None:
+		end=len
+
+
 	if end<0 or end>len or start<0 or start>len or end<start:
+		print(video_name,"error")
 		return
 	for i in range(0,g_sample):
 		time=start+(end-start)*i/g_sample
 		(
 			ffmpeg
-			.input(video_name, ss=time)
+			.input(video_path, ss=time)
 			.filter('scale', 256, 256)
-			.output(os.path.join(output_dir,video['video_id']+f"_{i}.jpg"), vframes=1)
+			.output(os.path.join(output_abs_dir,output_dir+f"_{i}.jpg"), vframes=1)
 			.global_args('-loglevel', 'error')
 			.global_args('-y')
 			.run()
 		)
-	
 
 if __name__=="__main__":
 	parser = argparse.ArgumentParser(description='download and sample images')
