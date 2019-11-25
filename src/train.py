@@ -55,8 +55,6 @@ def train(args):
 
 	for i_epoch in range(start,args.epoch):
 		for i_b,(images,sen_in,lengths) in enumerate(train):
-			if i_b==10:
-				break
 			images=images.squeeze(0).to(device)
 			sen_in=sen_in.squeeze(0).to(device)
 			#images batch*25*3*256*256 5d tensor.
@@ -80,6 +78,7 @@ def train(args):
 			
 			#set batch to 1 when using.
 			#use to debug. if predict is correct. Given the same word token it would produce the same word as decode at the position.
+			"""
 			if i_b==0:
 				encoder.eval()
 				decoder.eval()
@@ -92,7 +91,7 @@ def train(args):
 				print("predict,first to last",get_sentence(predict[0],train_meta))
 				encoder.train()
 				decoder.train()
-			
+			"""
 		#calculate BLEU@4 score.
 		encoder.eval()
 		decoder.eval()
@@ -161,20 +160,20 @@ if __name__=="__main__":
 	parser.add_argument('--image_dir',default='../data/msr_vtt',help='directory for sampled images')
 	parser.add_argument('--train_vocab',default='../data/msr_vtt/train_vocab.json',help='vocabulary file for training data')
 	parser.add_argument('--test_vocab',default='../data/msr_vtt/test_vocab.json',help='vocabulary file for testing data')
-	parser.add_argument('--batch_size',type=int,default=1,help='batch size')
+	parser.add_argument('--batch_size',type=int,default=16,help='batch size')
 	parser.add_argument('--encoder_dim',type=int,default=256,help='dimension for TDconvEncoder')
 	parser.add_argument('--decoder_dim',type=int,default=256,help='dimension for TDconvDecoder')
-	parser.add_argument('--encoder_layer',type=int,default=3,help='layer of TDconvEncoder')
-	parser.add_argument('--decoder_layer',type=int,default=3,help='layer of TDconvDecoder')
+	parser.add_argument('--encoder_layer',type=int,default=2,help='layer of TDconvEncoder')
+	parser.add_argument('--decoder_layer',type=int,default=2,help='layer of TDconvDecoder')
 	parser.add_argument('--embed_dim',type=int,default=256,help='dimension for word embedding')
 	parser.add_argument('--attend_dim',type=int,default=256,help='dimension for attention')
 	parser.add_argument('--device',type=str,default='cuda:0',help='default to cuda:0 if gpu available else cpu')
 	parser.add_argument('--epoch',type=int,default=10,help='total epochs to train.')
-	parser.add_argument('--lr',type=float,default=0.001,help='learning rate for optimizer.')
+	parser.add_argument('--lr',type=float,default=0.0001,help='learning rate for optimizer.')
 	parser.add_argument('--log_dir',default='../logs/',help='directory for storing log files')
 	parser.add_argument('--ckp_dir',default='../checkpoints/',help='directory for storing checkpoints.')
 	parser.add_argument('--ckp',default='',help='the checkpoint to be loaded.')
-	parser.add_argument('--BLEU_eval_ratio',type=float,default=0.0005,help='proportion of data used to test model. 1 would use all the data to evaluate our model. But it will take a long time.')
+	parser.add_argument('--BLEU_eval_ratio',type=float,default=0.005,help='proportion of data used to test model. 1 would use all the data to evaluate our model. But it will take a long time.')
 
 
 	args = parser.parse_args()
