@@ -76,7 +76,8 @@ def train(args):
 			loss.backward()
 			clip_grad_norm_([p for p in params if p.requires_grad is True],1)
 			optimizer.step()
-
+			"""
+			#set batch to 1 when using.
 			#use to debug. if predict is correct. Given the same word token it would produce the same word as decode at the position.
 			if i_b==0:
 				encoder.eval()
@@ -90,7 +91,7 @@ def train(args):
 				print("predict,first to last",get_sentence(predict,train_meta))
 				encoder.train()
 				decoder.train()
-
+			"""
 		#calculate BLEU@4 score.
 		in_BLEU=0
 		out_BLEU=0
