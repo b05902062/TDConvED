@@ -43,9 +43,9 @@ def train(args):
 	optimizer = torch.optim.Adam([p for p in params if p.requires_grad is True], lr=args.lr)
 	start=0
 
-	if args.ckp!='':
+	if args.ckp_path!='':
 		#load checkpoint
-		checkpoint = torch.load(os.path.join(args.ckp_dir,args.ckp))
+		checkpoint = torch.load(os.path.join(args.ckp_path))
 		encoder.load_state_dict(checkpoint['encoder'])
 		decoder.load_state_dict(checkpoint['decoder'])
 		optimizer.load_state_dict(checkpoint['optimizer'])
@@ -56,6 +56,8 @@ def train(args):
 
 	for i_epoch in range(start,args.epoch):
 		for i_b,(images,sen_in,lengths) in enumerate(train):
+			if i_b==10:
+				break
 			images=images.squeeze(0).to(device)
 			sen_in=sen_in.squeeze(0).to(device)
 			#images batch*25*3*256*256 5d tensor.
@@ -89,7 +91,7 @@ def train(args):
 				print("decode, second to last",outputs.max(dim=2)[1])
 				(predict,prob)=decoder.predict(features)
 				print("predict, first to last",predict[0])
-				print("predict,first to last",get_sentence(predict[0],train_meta))
+				print("predict,first to last",get_sentence(predict[0],train_meta.w2i,train_meta.i2w))
 				encoder.train()
 				decoder.train()
 			"""
@@ -120,7 +122,7 @@ def train(args):
 
 		print(f"Epoch: {i_epoch+1}/{args.epoch} , train BLEU@4: {in_BLEU} , test BLEU@4: {out_BLEU}")
 		output.write(f"Epoch: {i_epoch+1}/{args.epoch} , train BLEU@4: {in_BLEU} , test BLEU@4: {out_BLEU}")
-		torch.save({'epoch': i_epoch+1,'encoder': encoder.state_dict(),'decoder':decoder.state_dict(),'optimizer': optimizer.state_dict(),'in_BLEU@4':in_BLEU,'out_BLEU@4':out_BLEU }, os.path.join(args.ckp_dir,f'{i_epoch+1}th_ckp_{ID}'))
+		torch.save({'epoch': i_epoch+1,'args':args,'w2i':train_meta.w2i,'i2w':train_meta.i2w,'encoder': encoder.state_dict(),'decoder':decoder.state_dict(),'optimizer': optimizer.state_dict(),'in_BLEU@4':in_BLEU,'out_BLEU@4':out_BLEU }, os.path.join(args.ckp_dir,f'{i_epoch+1}th_ckp_{ID}'))
 
 
 def get_BLEU(images,encoder,decoder,train_meta,score_meta,index):
@@ -131,7 +133,7 @@ def get_BLEU(images,encoder,decoder,train_meta,score_meta,index):
 		features=encoder(images)
 		predict=decoder.predict(features)[0][0]#first sentence
 		#predict is 2d tensor of size 1*max_predict.
-		hypo=get_sentence(predict,train_meta)[0]
+		hypo=get_sentence(predict,train_meta.w2i,train_meta.i2w)[0]
 		#hypo is a list(len=# of words in this sentence, 0 to max_predict-1) of string. 
 		#score_meta.ref[video_id] is a list(len=total # of reference sentences for this video) of list(len=# of words in a string) of strings.
 		#print("predict",predict,"hypo",hypo,"\n",score_meta.ref[video_id])
@@ -139,18 +141,18 @@ def get_BLEU(images,encoder,decoder,train_meta,score_meta,index):
 		return sentence_bleu(score_meta.ref[video_id],hypo)
 
 
-def get_sentence(sen_in,train_meta):
-	#sen_in of size batch*sentence_len. sentences includes <pad>, <sos>,<eos>,<unk> etc.
+def get_sentence(sen_in,w2i,i2w):
+	#sen_in is 2d array of size batch*sentence_len. sentences includes <pad>, <sos>,<eos>,<unk> etc.
 	sen=[]
 	for s in sen_in:
 		temp=[]
 		for i in s:
 			i=i.item()
-			if i==train_meta.w2i["<eos>"]:
+			if i==w2i["<eos>"]:
 				break
 			temp.append(i)
 		#temp can be of length 1 to max_predict now. First one is always <sos>. There won't be <eos> in it now.
-		sen.append([train_meta.i2w[str(i)] for i in temp if (i!=train_meta.w2i["<sos>"] and i!=train_meta.w2i['<pad>'])])
+		sen.append([i2w[str(i)] for i in temp if (i!=w2i["<sos>"] and i!=w2i['<pad>'])])
 
 	#sen is a list(len=batch) of list(len=# of words in this sentence, from 0 to max_predict-1) of string.	
 	return sen
@@ -173,8 +175,8 @@ if __name__=="__main__":
 	parser.add_argument('--lr',type=float,default=0.0001,help='learning rate for optimizer.')
 	parser.add_argument('--log_dir',default='../logs/',help='directory for storing log files')
 	parser.add_argument('--ckp_dir',default='../checkpoints/',help='directory for storing checkpoints.')
-	parser.add_argument('--ckp',default='',help='the checkpoint to be loaded.')
-	parser.add_argument('--BLEU_eval_ratio',type=float,default=0.005,help='proportion of data used to test model. 1 would use all the data to evaluate our model. But it will take a long time.')
+	parser.add_argument('--ckp_path',default='',help='the path to a checkpoint to be loaded to continue your training.')
+	parser.add_argument('--BLEU_eval_ratio',type=float,default=0.0001,help='proportion of data used to test model. 1 would use all the data to evaluate our model. But it will take a long time.')
 
 
 	args = parser.parse_args()

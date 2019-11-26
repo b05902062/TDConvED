@@ -101,12 +101,11 @@ def sig_gate(x):
 class ResTDconvE(nn.Module):
 	def __init__(self,args):
 		super(ResTDconvE, self).__init__()
-		encoder_dim=args.encoder_dim
 		self.layer=args.encoder_layer
-		self.video_encoder=video_feature_extraction(encoder_dim)
+		self.video_encoder=video_feature_extraction(args.encoder_dim)
 		self.TDconvE=nn.ModuleList()
 		for i in range(args.encoder_layer):
-			self.TDconvE.append(TDconvE(encoder_dim,args.device))
+			self.TDconvE.append(TDconvE(args.encoder_dim,args.device))
 
 	def forward(self,x):
 		#unsqueeze dim 1 (g_sample) as 1 for image captioning

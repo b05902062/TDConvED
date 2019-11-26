@@ -10,29 +10,22 @@ import shutil
 g_sample=25
 
 
-def download_and_sample(args):
+def download_and_sample_msrvtt(args):
 
 	msr_vtt=args.file
 	output_dir=args.output_dir
 
-
-
 	with open(msr_vtt,"r") as f:
 		msr_vtt=json.load(f)['videos']
-
 	if not os.path.exists(output_dir):
 		os.mkdir(output_dir)
 	split=msr_vtt[0]['split']
 	output_dir=os.path.join(output_dir,split)
 	if not os.path.exists(output_dir):
 		os.mkdir(output_dir)
-	"""
-	for i in msr_vtt[:2]:
-		__download_sample(i,output_dir)
 
-	"""
 	p=Pool(10)
-	p.starmap(__download_sample,zip(msr_vtt,repeat(output_dir)))
+	p.starmap(__download_and_sample,zip(msr_vtt,repeat(output_dir)))
 	
 	p.close()
 	p.join()
@@ -47,12 +40,16 @@ def download_and_sample(args):
 		if len(os.listdir(os.path.join(output_dir,i)))!=g_sample:
 			shutil.rmtree(os.path.join(output_dir,i))	
 			
-def __download_sample(video,output_dir):
+def __download_and_sample(video,output_dir):
 
 	try:
-		yt = YouTube(video['url'])
-		yt.streams.filter(file_extension='mp4').first().download(output_path=output_dir,filename=video['video_id'])
-		__sample_image(video,output_dir)
+		download_video(video['url'],output_dir,video['video_id'])
+
+		video_path=os.path.join(output_dir,video['video_id']+".mp4")
+		start=video['start time']
+		end=video['end time']
+		sample_image(video_path,video['video_id'],start=start,end=end)
+
 		os.remove(os.path.join(output_dir,video['video_id']+'.mp4'))
 
 	except:
@@ -60,14 +57,14 @@ def __download_sample(video,output_dir):
 			os.remove(os.path.join(output_dir,video['video_id']+'.mp4'))
 		return
 
-def __sample_image(video,output_dir):
 
-	video_path=os.path.join(output_dir,video['video_id']+".mp4")
-	start=video['start time']
-	end=video['end time']
-	sample_image(video_path,video['video_id'],start=start,end=end)
+def download_video(url,output_dir,video_name):
+	#url is a string. url to a youtube video to be downloaded.
+	#output_dir is a string. a directory to store downloaded video.
+	#video_name is a string. the name without extension for the newly downloaded video. E.g. video_name='hello', the video would be named as 'hello.mp4'.
 
-
+	yt = YouTube(url)
+	yt.streams.filter(file_extension='mp4').first().download(output_path=output_dir,filename=video_name)
 	
 def sample_image(video_path,output_dir,start=None,end=None):
 	#video_path is the path to video file.
@@ -113,4 +110,4 @@ if __name__=="__main__":
 	parser.add_argument('--output_dir',default='../data/msr_vtt',help='output directory for sampled images')
 	args = parser.parse_args()
 	assert os.path.exists(args.output_dir),"--output_dir doesn't exist."
-	download_and_sample(args)
+	download_and_sample_msrvtt(args)
