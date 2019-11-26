@@ -30,7 +30,7 @@ def build_word(args):
 			sen.append(s['caption'])
 	word_count={}
 	for s in sen:
-		for w in s.strip().split(' '):
+		for w in s.strip().split():
 			if w not in word_count.keys():
 				word_count[w]=1
 			else:
@@ -52,7 +52,7 @@ def build_word(args):
 	sen_in=[]
 	for s in sen:
 		sen_temp=[w2i['<sos>']]
-		for w in s.strip().split(' '):
+		for w in s.strip().split():
 			if w not in w2i.keys():
 				sen_temp.append(w2i['<unk>'])
 			else:

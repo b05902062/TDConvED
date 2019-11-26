@@ -56,8 +56,6 @@ def train(args):
 
 	for i_epoch in range(start,args.epoch):
 		for i_b,(images,sen_in,lengths) in enumerate(train):
-			if i_b==10:
-				break
 			images=images.squeeze(0).to(device)
 			sen_in=sen_in.squeeze(0).to(device)
 			#images batch*25*3*256*256 5d tensor.
@@ -69,7 +67,7 @@ def train(args):
 			outputs=decoder(features,sen_in,lengths)
 			#outputs is of size batch*(max_label_len-1)*vocab_size
 			loss=criterion(outputs.reshape(-1,outputs.shape[2]),sen_in[:,1:].reshape(-1))
-			if i_b%1 ==0:
+			if i_b%args.loss_every ==0:
 				print(f"Epoch: {i_epoch+1}/{args.epoch} , Batch: {i_b+1}/{len(train)} Loss: {loss}")
 				output.write(f"Epoch: {i_epoch+1}/{args.epoch} , Batch: {i_b+1}/{len(train)} Loss: {loss}\n")
 			encoder.zero_grad()
@@ -160,6 +158,7 @@ def get_sentence(sen_in,w2i,i2w):
 if __name__=="__main__":
 	
 	parser = argparse.ArgumentParser(description='train TDconvED')
+	parser.add_argument('--loss_every',type=int,default=20,help='print loss every loss_every batches.')
 	parser.add_argument('--image_dir',default='../data/msr_vtt',help='directory for sampled images')
 	parser.add_argument('--train_vocab',default='../data/msr_vtt/train_vocab.json',help='vocabulary file for training data')
 	parser.add_argument('--test_vocab',default='../data/msr_vtt/test_vocab.json',help='vocabulary file for testing data')
@@ -176,7 +175,7 @@ if __name__=="__main__":
 	parser.add_argument('--log_dir',default='../logs/',help='directory for storing log files')
 	parser.add_argument('--ckp_dir',default='../checkpoints/',help='directory for storing checkpoints.')
 	parser.add_argument('--ckp_path',default='',help='the path to a checkpoint to be loaded to continue your training.')
-	parser.add_argument('--BLEU_eval_ratio',type=float,default=0.0001,help='proportion of data used to test model. 1 would use all the data to evaluate our model. But it will take a long time.')
+	parser.add_argument('--BLEU_eval_ratio',type=float,default=0.005,help='proportion of data used to test model. 1 would use all the data to evaluate our model. But it will take a long time.')
 
 
 	args = parser.parse_args()

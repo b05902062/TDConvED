@@ -128,10 +128,12 @@ class TDconvD(nn.Module):
 				new_state,prob=self.__predict(b.state,b.get_last_word(),features,concat)
 				prob_id=prob.argsort(descending=True)
 				for a in range(beam_size):
+					#every single beam_state object is completely independent. The same as doing a copy.deepcopy.
+					#Seems like state would continue to hold gradient information. But prob list or word tensor no longer contain any gradient.
 					new_beam_list.append(b.copy().add(new_state,prob_id[a].item(),prob[prob_id[a]].item()))
 				
 			for b in new_beam_list:
-				if b.word[i+1] is 2:#<eos>
+				if b.word[i+1] == 2:#<eos>
 					final_list.append(b)
 				else:
 					new_beam_list_not_final.append(b)

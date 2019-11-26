@@ -1,3 +1,0 @@
-encoding input: batch *25*channel* height*width 5d pytorch tensor
-
-encoding output: batch*25*512 3d tensor (encoder_dim)
