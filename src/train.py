@@ -21,14 +21,16 @@ def train(args):
 	print("using",device)
 
 	#training
-	train_meta=msr_vtt_dataset(args.train_vocab,args.image_dir,"train",args.batch_size)
-	train=DataLoader(train_meta,batch_size=1,shuffle=False)
+	train_meta=msr_vtt_dataset(args.train_vocab,args.image_dir,"train",args.batch_size,shuffle=True)
+	train=DataLoader(train_meta,batch_size=1,shuffle=False)#don't modify batch and shuffle here.
 
 	#BLEU evaluation
 	BLEU_train_meta=msr_vtt_dataset(args.train_vocab,args.image_dir,"train",1)
 	BLEU_test_meta=msr_vtt_dataset(args.test_vocab,args.image_dir,"test",1)
-	BLEU_train=DataLoader(BLEU_train_meta,batch_size=1,shuffle=False)
-	BLEU_test=DataLoader(BLEU_test_meta,batch_size=1,shuffle=False)
+	BLEU_train=DataLoader(BLEU_train_meta,batch_size=1,shuffle=False)#don't modify batch and shuffle here.
+
+	BLEU_test=DataLoader(BLEU_test_meta,batch_size=1,shuffle=False)#don't modify batch and shuffle here.
+
 	
 	encoder = ResTDconvE(args).to(device)
 	
@@ -45,7 +47,7 @@ def train(args):
 
 	if args.ckp_path!='':
 		#load checkpoint
-		checkpoint = torch.load(os.path.join(args.ckp_path))
+		checkpoint = torch.load(os.path.join(args.ckp_path),map_location=args.device)
 		encoder.load_state_dict(checkpoint['encoder'])
 		decoder.load_state_dict(checkpoint['decoder'])
 		optimizer.load_state_dict(checkpoint['optimizer'])
@@ -80,16 +82,18 @@ def train(args):
 			#set batch to 1 when using.
 			#use to debug. if predict is correct. Given the same word token it would produce the same word as decode at the position.
 			"""
-			if i_b==0:
+			if 1 or i_b==0:
 				encoder.eval()
 				decoder.eval()
 				features=encoder(images)	
 				outputs=decoder(features,sen_in,lengths)				
 				print("answer, second word to last",sen_in[:,1:])
 				print("decode, second to last",outputs.max(dim=2)[1])
-				(predict,prob)=decoder.predict(features)
+				print("decode, second to last",get_sentence(outputs.max(dim=2)[1],train_meta.w2i,train_meta.i2w))
+				(predict,prob)=decoder.predict(features,beam_size=1)
 				print("predict, first to last",predict[0])
 				print("predict,first to last",get_sentence(predict[0],train_meta.w2i,train_meta.i2w))
+				print(get_BLEU(images,encoder,decoder,train_meta,BLEU_train_meta,i_b))
 				encoder.train()
 				decoder.train()
 			"""
@@ -119,7 +123,7 @@ def train(args):
 		decoder.train()
 
 		print(f"Epoch: {i_epoch+1}/{args.epoch} , train BLEU@4: {in_BLEU} , test BLEU@4: {out_BLEU}")
-		output.write(f"Epoch: {i_epoch+1}/{args.epoch} , train BLEU@4: {in_BLEU} , test BLEU@4: {out_BLEU}")
+		output.write(f"Epoch: {i_epoch+1}/{args.epoch} , train BLEU@4: {in_BLEU} , test BLEU@4: {out_BLEU}\n")
 		torch.save({'epoch': i_epoch+1,'args':args,'w2i':train_meta.w2i,'i2w':train_meta.i2w,'encoder': encoder.state_dict(),'decoder':decoder.state_dict(),'optimizer': optimizer.state_dict(),'in_BLEU@4':in_BLEU,'out_BLEU@4':out_BLEU }, os.path.join(args.ckp_dir,f'{i_epoch+1}th_ckp_{ID}'))
 
 
@@ -134,7 +138,7 @@ def get_BLEU(images,encoder,decoder,train_meta,score_meta,index):
 		hypo=get_sentence(predict,train_meta.w2i,train_meta.i2w)[0]
 		#hypo is a list(len=# of words in this sentence, 0 to max_predict-1) of string. 
 		#score_meta.ref[video_id] is a list(len=total # of reference sentences for this video) of list(len=# of words in a string) of strings.
-		#print("predict",predict,"hypo",hypo,"\n",score_meta.ref[video_id])
+		####print("predict",predict,"\nhypo",hypo,"\nref",score_meta.ref[video_id])
 		#return single sentence BLEU@4 score.
 		return sentence_bleu(score_meta.ref[video_id],hypo)
 

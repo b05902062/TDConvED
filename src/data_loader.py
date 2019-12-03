@@ -1,13 +1,14 @@
 from torch.utils.data import Dataset, DataLoader
 import json
 import os
+import random
 from skimage import io
 import torch 
 
 g_sample=25
 
 class msr_vtt_dataset(Dataset):
-	def __init__(self,vocab_file,image_dir,split,batch):
+	def __init__(self,vocab_file,image_dir,split,batch,shuffle=False):
 		with open(vocab_file,"r") as f:
 			vocab=json.load(f)
 
@@ -19,9 +20,19 @@ class msr_vtt_dataset(Dataset):
 
 		sen_in=vocab['sen_in']
 		video_id=vocab['video_id']
+		if shuffle==True:
+			combo=list(zip(sen_in,video_id))
+			random.shuffle(combo)
+			sen_in,video_id=zip(*combo)
+			sen_in=list(sen_in)
+			video_id=list(video_id)
+
+		#sen_in is a list(len=number of total sentences for all videos) of list(len=len of that sentence) of word index(int). All index is in i2w.
+		#video_id is a list(len=first len of sen_in) of string(the video this sentence corresponds to).
+		
 		self.sen_in=[]
 		self.video_id=[]
-
+	
 		#we are generating batch our self so that we don't need to cut variable length sentences.
 		for i in range(len(sen_in)//batch):
 			self.sen_in.append(sen_in[batch*i:batch*(i+1)])
