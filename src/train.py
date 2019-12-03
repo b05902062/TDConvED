@@ -22,7 +22,7 @@ def train(args):
 
 	#training
 	train_meta=msr_vtt_dataset(args.train_vocab,args.image_dir,"train",args.batch_size,shuffle=True)
-	train=DataLoader(train_meta,batch_size=1,shuffle=False)#don't modify batch and shuffle here.
+	train=DataLoader(train_meta,batch_size=1,shuffle=True)
 
 	#BLEU evaluation
 	BLEU_train_meta=msr_vtt_dataset(args.train_vocab,args.image_dir,"train",1)
@@ -101,24 +101,33 @@ def train(args):
 		encoder.eval()
 		decoder.eval()
 		in_BLEU=0
+		in_count=0
 		out_BLEU=0
+		out_count=0
 		for i_b,(images,_,_) in enumerate(BLEU_train):
 			#print(i_b,"/",int(len(BLEU_train)*args.BLEU_eval_ratio))
-			if i_b==int(len(BLEU_train)*args.BLEU_eval_ratio):
+			if i_b%20!=0:
+				#each video has 20 sentences. they would produce the same score. So we only calculate for one time.
+				continue
+			if i_b>int(len(BLEU_train)*args.BLEU_eval_ratio):
 				break
 			images=images.squeeze(0).to(device)
 			in_BLEU+=get_BLEU(images,encoder,decoder,train_meta,BLEU_train_meta,i_b)
+			in_count+=1
 
 		for i_b,(images,_,_) in enumerate(BLEU_test):
 			#print(i_b,"/",int(len(BLEU_test)*args.BLEU_eval_ratio))
-			if i_b==int(len(BLEU_test)*args.BLEU_eval_ratio):
+			if i_b%20!=0:
+				#each video has 20 sentences. they would produce the same score. So we only calculate for one time.
+				continue
+			if i_b>int(len(BLEU_test)*args.BLEU_eval_ratio):
 				break
 			images=images.squeeze(0).to(device)
 			out_BLEU+=get_BLEU(images,encoder,decoder,train_meta,BLEU_test_meta,i_b)
-		assert int(len(BLEU_train)*args.BLEU_eval_ratio)!=0, "BLEU devide by zero. Increase ratio."	
-		assert int(len(BLEU_test)*args.BLEU_eval_ratio)!=0, "BLEU devide by zero. Increase ratio."
-		in_BLEU=in_BLEU/int(len(BLEU_train)*args.BLEU_eval_ratio)
-		out_BLEU=out_BLEU/int(len(BLEU_test)*args.BLEU_eval_ratio)
+			out_count+=1
+
+		in_BLEU=in_BLEU/in_count
+		out_BLEU=out_BLEU/out_count
 		encoder.train()
 		decoder.train()
 
@@ -179,7 +188,7 @@ if __name__=="__main__":
 	parser.add_argument('--log_dir',default='../logs/',help='directory for storing log files')
 	parser.add_argument('--ckp_dir',default='../checkpoints/',help='directory for storing checkpoints.')
 	parser.add_argument('--ckp_path',default='',help='the path to a checkpoint to be loaded to continue your training.')
-	parser.add_argument('--BLEU_eval_ratio',type=float,default=0.005,help='proportion of data used to test model. 1 would use all the data to evaluate our model. But it will take a long time.')
+	parser.add_argument('--BLEU_eval_ratio',type=float,default=1,help='proportion of data used to test model. 1 would use all the data to evaluate our model. But it will take a long time.')
 
 
 	args = parser.parse_args()
