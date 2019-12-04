@@ -57,12 +57,11 @@ def train(args):
 
 
 	for i_epoch in range(start,args.epoch):
-		for i_b,(images,sen_in,lengths) in enumerate(train):
+		for i_b,(images,sen_in,_) in enumerate(train):
 			images=images.squeeze(0).to(device)
 			sen_in=sen_in.squeeze(0).to(device)
 			#images batch*25*3*256*256 5d tensor.
 			#sen_in is a 2d tensor of size batch*(max_len of this batch) containing word index.
-			#len is a list(len=batch) of int(length of each sentence in this batch including <sos> and <eos>).
 
 			features=encoder(images)	
 			#feature is of size batch*g_sample*encoder_dim.

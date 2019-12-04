@@ -22,13 +22,15 @@ def generate_caption(video_path,ckp_path,start=None,end=None,output_dir='user_im
 	#max_predict_length is the maximum number of words in a sentence. The generated sentence can be shorter than this.
 	#return_prob is True means to return both sentences and score for each sentence, the bigger the better.
 	
-	checkpoint = torch.load(ckp_path)
+	device = torch.device(device if torch.cuda.is_available() else 'cpu')
+	checkpoint = torch.load(ckp_path,map_location=device)
+
 	args=checkpoint['args']
 	w2i=checkpoint['w2i']
 	i2w=checkpoint['i2w']
 
-	device = torch.device(device if torch.cuda.is_available() else 'cpu')
 	args.device=device
+
 
 	encoder = ResTDconvE(args).to(args.device)
 	decoder = TDconvD(args.embed_dim, args.decoder_dim,args.encoder_dim,args.attend_dim, len(w2i),args.device,layer=args.decoder_layer).to(args.device)

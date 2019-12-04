@@ -62,7 +62,7 @@ class msr_vtt_dataset(Dataset):
 			sen[i_batch][:lengths[i_batch]]=torch.tensor(sen_in)
 		#return images batch*25*3*256*256 5d tensor.
 		#sen is a 2d tensor of size batch*(max_len of this batch) containing word index padded with 0.
-		#lengghs is a list(len=batch) of int(length of each sentence in this batch including <sos> and <eos>).
+		#lengths is a 1d tensor of size batch, containing lengths of each sentence in this batch including <sos> and <eos>.
 		#video_id is a list of string indicating each sample'scorresponding video name.
 		return	images,sen,lengths
 
