@@ -65,7 +65,7 @@ def train(args):
 
 			features=encoder(images)	
 			#feature is of size batch*g_sample*encoder_dim.
-			outputs=decoder(features,sen_in,lengths)
+			outputs=decoder(features,sen_in)
 			#outputs is of size batch*(max_label_len-1)*vocab_size
 			loss=criterion(outputs.reshape(-1,outputs.shape[2]),sen_in[:,1:].reshape(-1))
 			if i_b%args.loss_every ==0:
@@ -175,12 +175,12 @@ if __name__=="__main__":
 	parser.add_argument('--train_vocab',default='../data/msr_vtt/train_vocab.json',help='vocabulary file for training data')
 	parser.add_argument('--test_vocab',default='../data/msr_vtt/test_vocab.json',help='vocabulary file for testing data')
 	parser.add_argument('--batch_size',type=int,default=16,help='batch size')
-	parser.add_argument('--encoder_dim',type=int,default=256,help='dimension for TDconvEncoder')
-	parser.add_argument('--decoder_dim',type=int,default=256,help='dimension for TDconvDecoder')
+	parser.add_argument('--encoder_dim',type=int,default=512,help='dimension for TDconvEncoder')
+	parser.add_argument('--decoder_dim',type=int,default=512,help='dimension for TDconvDecoder')
 	parser.add_argument('--encoder_layer',type=int,default=2,help='layer of TDconvEncoder')
 	parser.add_argument('--decoder_layer',type=int,default=2,help='layer of TDconvDecoder')
-	parser.add_argument('--embed_dim',type=int,default=256,help='dimension for word embedding')
-	parser.add_argument('--attend_dim',type=int,default=256,help='dimension for attention')
+	parser.add_argument('--embed_dim',type=int,default=512,help='dimension for word embedding')
+	parser.add_argument('--attend_dim',type=int,default=512,help='dimension for attention')
 	parser.add_argument('--device',type=str,default='cuda:0',help='default to cuda:0 if gpu available else cpu')
 	parser.add_argument('--epoch',type=int,default=10,help='total epochs to train.')
 	parser.add_argument('--lr',type=float,default=0.0001,help='learning rate for optimizer.')

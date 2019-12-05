@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import copy
 import math
 
-g_decode_kernel_size= 7#odd
+g_decode_kernel_size= 3#odd
 
 
 class TDconvD(nn.Module):
@@ -28,7 +28,7 @@ class TDconvD(nn.Module):
 		self.device=device
 		self.tanh=nn.Tanh()
 		self.softmax=nn.Softmax(dim=1)
-	def forward(self, features, captions, lengths):   
+	def forward(self, features, captions):   
 
 		#for image captioning.
 		if(len(features.shape)==2):
