@@ -41,7 +41,7 @@ class msr_vtt_dataset(Dataset):
 			self.sen_in.append(sen_in[- (len(sen_in)%batch) :])
 			self.video_id.append(video_id[- (len(sen_in)%batch) :])
 
-		#self.sen_in is a list(len=number of batch) of list(len=batch size except that the last batch can be smaller) list(len=length of that very sentence) of word index(int).
+		#self.sen_in is a list(len=number of batch) of list(len=batch size except that the last batch can be smaller) of list(len=length of that very sentence) of word index(int).
 		#self.video_id is a list(len the same as first len of self.sen_in) of list(len=the second len of self.sen_in.) of string(video name).
 		#print(self.sen_in[:5])
 		#print(self.video_id[:5])
