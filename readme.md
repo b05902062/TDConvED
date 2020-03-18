@@ -94,8 +94,9 @@ We can launch python or write in a file to generate caption. We also launch pyth
         #generate_caption(video_path,ckp_path)
         #video_path is a string, help='path to video file'
         #ckp_path is a string, help='path to a checkpoint(model) used to generate captions. checkpoint can be found in ../checkpoints by default. Check logs in ../logs to choose the one with highest BLEU score'
-	#A sample checkpoint can be found at a google drive link:https://drive.google.com/file/d/1SCoV2QRMQ-iJ7Vu9JygEnaGvRl0fX80v/view?usp=sharing
-        generate_caption('../data/robot.mp4',<specify_a_checkpoint_path>)
+        #A sample checkpoint can be found at a google drive link: (https://drive.google.com/file/d/1SCoV2QRMQ-iJ7Vu9JygEnaGvRl0fX80v/view?usp=sharing)
+    
+        generate_caption('../data/robot.mp4',<path_to_checkpoint>)
 
         #you can specify some parameters.
         #generate_caption() returns a list(len=return_top) of list(len=# of words in this sentence) of string.
